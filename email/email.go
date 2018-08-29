@@ -11,7 +11,7 @@ import (
     "sync"
 )
 
-var wg sync.WaitGroup // 1
+var wg sync.WaitGroup // VERY IMP to declare this globally, other wise one   //would hit "fatal error: all goroutines are asleep - deadlock!"
 
 func check(e error) {
     if e != nil {
@@ -72,7 +72,13 @@ func main() {
     }
 	}
 
-  wg.Wait() // 4
+  go func(wg sync.WaitGroup, ch chan []string) {
+  		log.Println("waiting")
+  		wg.Wait()
+  		log.Println("done waiting")
+  		close(ch)
+  	}(wg, ch)
+
   for i := 0; i < len(files); i++ {
     s := <-ch
     fmt.Printf("{from: %s, subject: %s, date: %s }\n", s[0], s[1], s[2])
