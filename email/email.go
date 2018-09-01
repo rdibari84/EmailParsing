@@ -19,14 +19,14 @@ func check(e error) {
     }
 }
 
-func readFileGo(myfile string, ch chan<-[]string) {
-  defer wg.Done() // 3
-  fmt.Printf("Opening %s\n", myfile)
-
-  file, err := os.Open(myfile)
+func readFile(dir string) (*os.File,string) {
+  file, err := os.Open(dir)
   check(err)
-  defer file.Close()
+  filename := filepath.Base(dir)
+  return file, filename
+}
 
+func parseFile(file *os.File) []string {
   scanner := bufio.NewScanner(file)
   var from = ""
   var subject = ""
@@ -42,14 +42,35 @@ func readFileGo(myfile string, ch chan<-[]string) {
     if strings.HasPrefix(line, "Subject: ") {
       subject = line[len("Subject: "):]
     }
-    if from != "" && date != "" && subject != "" {
+    if from != "" && date != "" && subject != "" { // if we have all the information, stop checking
       break;
     }
 	}
 	if err := scanner.Err(); err != nil {
-		log.Fatal("Error Reading file " + myfile + "\n", err)
+		log.Fatal("Error Reading file %v. error %v \n", file, err)
 	}
-  ch <- []string{from, subject, date}
+  // if we're missing any information retun ||
+  if from == "" {
+    from = "||"
+  }
+  if subject == "" {
+    subject = "||"
+  }
+  if date == "" {
+    date = "||"
+  }
+  return []string{from, subject, date}
+}
+
+func getInformationGo(myfile string, ch chan<-[]string) {
+  defer wg.Done() // 3
+  fmt.Printf("Opening %s\n", myfile)
+
+  file, filename := readFile(myfile)
+
+  info := parseFile(file)
+
+  ch <- []string{info[0], info[1], info[2], filename}
 }
 
 func main() {
@@ -68,7 +89,7 @@ func main() {
 	for _, file := range files {
     if !file.IsDir() {
         wg.Add(1)
-        go readFileGo(dir + "/" + file.Name(), ch)
+        go getInformationGo(dir + "/" + file.Name(), ch)
     }
 	}
 
@@ -81,7 +102,7 @@ func main() {
 
   for i := 0; i < len(files); i++ {
     s := <-ch
-    fmt.Printf("{from: %s, subject: %s, date: %s }\n", s[0], s[1], s[2])
+    fmt.Printf("{from: %s, subject: %s, date: %s, filename: %s }\n", s[0], s[1], s[2], s[3])
   }
 
 }
