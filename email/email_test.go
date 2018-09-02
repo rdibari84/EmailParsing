@@ -177,7 +177,6 @@ func TestEmailParsing(t *testing.T){
 		close(ch)
 	}(wg, ch)
 
-
   for i := 0; i < len(files); i++ {
     s := <-ch
     //log.Printf("{from: %s, subject: %s, date: %s, filename: %s }\n", s.From, s.Subject, s.Date, s.FileName)
@@ -201,6 +200,5 @@ func TestReadAndParseFiles(t *testing.T){
   if err != nil {
       log.Fatal(err)
   }
-  readAndParseFiles(dir + "/")
-
+  readAndParseFiles(dir)
 }

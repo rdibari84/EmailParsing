@@ -36,6 +36,12 @@ func checkError(e error, msg string) {
 }
 
 func readAndParseFiles(dir string) {
+  // double check directory. Add a trailing '/' if not present
+  log.Printf("directory: %s\n", dir)
+  if !strings.HasSuffix(dir, "/") {
+    dir = dir + "/"
+  }
+  
   files, err := ioutil.ReadDir(dir)
   checkError(err, "Issue reading directory " + dir)
 
@@ -149,12 +155,6 @@ func main() {
   var dir string
   flag.StringVar(&dir, "dir", currentdir, "full directory path that holds the email files to parse")
   flag.Parse()
-
-  // double check directory. Add a trailing '/' if not present
-  log.Printf("directory: %s\n", dir)
-  if !strings.HasSuffix(dir, "/") {
-    dir = dir + "/"
-  }
 
   // parse files
   readAndParseFiles(dir)
