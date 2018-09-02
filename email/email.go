@@ -65,9 +65,7 @@ func readAndParseFiles(dir string) {
   }
 }
 
-func writeFile() {
-
-}
+func writeFile() {}
 
 func emailParsing(myfile string, ch chan<-EmailInformation) {
   log.Printf("Opening %s\n", myfile)

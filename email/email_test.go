@@ -194,5 +194,13 @@ func TestEmailParsing(t *testing.T){
       t.Errorf("Expected emailInfo.FileName to return 'file.msg' but got %s instead", s.FileName)
     }
   }
+}
+
+func TestReadAndParseFiles(t *testing.T){
+  dir, err := filepath.Abs(filepath.Dir("."))
+  if err != nil {
+      log.Fatal(err)
+  }
+  readAndParseFiles(dir + "/")
 
 }
