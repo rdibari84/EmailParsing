@@ -35,13 +35,30 @@ func checkError(e error, msg string) {
     }
 }
 
-func readAndParseFiles(dir string) {
+func IsDirectory(path string) (bool) {
+    fileInfo, err := os.Stat(path)
+    checkError(err, "Invalid outfile. Path '" + path + "' does not exist\n")
+    return fileInfo.IsDir()
+}
+
+func validateInput(dir string, outfile string) string {
   // double check directory. Add a trailing '/' if not present
   log.Printf("directory: %s\n", dir)
   if !strings.HasSuffix(dir, "/") {
     dir = dir + "/"
   }
-  
+
+  // checkout outfile. make sure its a .txt file and that the path to file exists
+  log.Printf("outfile: %s\n", outfile)
+  if !strings.HasSuffix(outfile, ".txt") {
+    log.Fatal("Invalid outfile. Must have be a .txt\n")
+  }
+  IsDirectory(filepath.Dir(outfile))
+  return dir
+}
+
+func readParseAndWriteFiles(dir string, outfile string) {
+
   files, err := ioutil.ReadDir(dir)
   checkError(err, "Issue reading directory " + dir)
 
@@ -59,19 +76,28 @@ func readAndParseFiles(dir string) {
   log.Printf("found %d email files in directory to parse\n", numberParsedFiles)
 
   go func(wg sync.WaitGroup, ch chan EmailInformation) {
-		log.Println("waiting")
 		wg.Wait()
 		log.Println("done waiting")
 		close(ch)
 	}(wg, ch)
 
-  for i := 0; i < numberParsedFiles; i++ {
-    s := <-ch
-    log.Printf("{from: %s, subject: %s, date: %s, filename: %s }\n", s.From, s.Subject, s.Date, s.FileName)
-  }
+  writeFile(ch, outfile)
 }
 
-func writeFile() {}
+func writeFile(ch chan EmailInformation, outfile string) {
+  f, err := os.Create(outfile)
+  checkError(err, "Issue creating " + outfile)
+  defer f.Close()
+
+  w := bufio.NewWriter(f)
+  for i := 0; i < numberParsedFiles; i++ {
+    emailinfo := <-ch
+    _, err := w.WriteString(emailinfo.From + "|" + emailinfo.Subject + "|" + emailinfo.Date + "|" + emailinfo.FileName + "\n")
+    checkError(err, "Issue writting to file")
+  }
+  w.Flush()
+  log.Printf("Succesfully wrote %s", outfile)
+}
 
 func emailParsing(myfile string, ch chan<-EmailInformation) {
   log.Printf("Opening %s\n", myfile)
@@ -96,16 +122,26 @@ func parseFile(filename string, file io.Reader) EmailInformation {
   scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
     line := scanner.Text()
-
     if from == "" { // haven't found from yet. keep looking
-      from = findRegex("From:", line)
+      tmp := findRegex("^From:", line)
+      if tmp != "" {
+          from = extractEmail(tmp)
+      }
     }
     if date == "" { // haven't found date yet. keep looking
-      date = findRegex("Date:", line)
+      date = findRegex("^Date:", line)
     }
+
     if subject == "" { // haven't found subject yet. keep looking
-      subject = findRegex("Subject:", line)
+      subject = findRegex("^Subject:", line)
+    } else {
+      // if line starts with a space, then its a continuation from above
+      matched, _ := regexp.MatchString("^ [\\S\\s]*", line)
+      if matched {
+        subject = subject + "\n" + line
+      }
     }
+
     if from != "" && date != "" && subject != "" { // if we have all the information, stop checking
       break;
     }
@@ -140,6 +176,12 @@ func findRegex(pattern string, s string) string {
   return ""
 }
 
+func extractEmail(s string) string {
+  p := regexp.MustCompile("[^<>][\\w.]*@[\\S]*\\.[\\w]{3}")
+  toreturn := strings.TrimSpace(p.FindString(s))
+  return toreturn
+}
+
 //////////////////////////////////////////////////////////////
 ////////////////////////// Main //////////////////////////////
 //////////////////////////////////////////////////////////////
@@ -154,8 +196,13 @@ func main() {
   // define dir command line flag. Default dir to current directory if not set.
   var dir string
   flag.StringVar(&dir, "dir", currentdir, "full directory path that holds the email files to parse")
+  // define dir command line flag. Default dir to current directory if not set.
+  var outfile string
+  flag.StringVar(&outfile, "outfile", currentdir + "/email.txt", "full directory path that holds the email files to parse")
   flag.Parse()
 
+
+  dir = validateInput(dir, outfile)
   // parse files
-  readAndParseFiles(dir)
+  readParseAndWriteFiles(dir, outfile)
 }
