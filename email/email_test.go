@@ -5,7 +5,6 @@ import (
   "strings"
   "bufio"
   "log"
-  "sync"
   "path/filepath"
   "os"
 )
@@ -423,16 +422,16 @@ func TestEmailParsing(t *testing.T){
   ch := make(chan EmailInformation)
   files := []string{outfile,outfile,outfile,outfile,outfile}
   for _, file := range files {
-    wg.Add(1)
+    wgw.Wg.Add(1)
     go emailParsing(file, ch) // call test function
   }
 
-  go func(wg sync.WaitGroup, ch chan EmailInformation) {
+  go func(wgw WaitGroupWrapper, ch chan EmailInformation) {
 		log.Println("waiting")
-		wg.Wait()
+		wgw.Wg.Wait()
 		log.Println("done waiting")
 		close(ch)
-	}(wg, ch)
+	}(wgw, ch)
 
   for i := 0; i < len(files); i++ {
     s := <-ch

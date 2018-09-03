@@ -21,8 +21,18 @@ type EmailInformation struct {
   FileName string
 }
 
-var numberParsedFiles int // define globally as to know how many files to wait for
-var wg sync.WaitGroup // VERY IMP to declare this globally, other wise one   //would hit "fatal error: all goroutines are asleep - deadlock!"
+// Make a wait group wrapper to count how many items are being processed
+type WaitGroupWrapper struct {
+  Wg sync.WaitGroup
+  NumberParsedFiles int
+}
+
+func NewWaitGroupWrapper() WaitGroupWrapper {
+  wgw := WaitGroupWrapper{NumberParsedFiles: 0}
+  return wgw
+}
+
+var wgw = NewWaitGroupWrapper() // VERY IMP to declare this globally, other wise one would hit "fatal error: all goroutines are asleep - deadlock!"
 
 //////////////////////////////////////////////////////////////
 //////////////////// Helper Methods //////////////////////////
@@ -65,24 +75,24 @@ func readParseAndWriteFiles(dir string, outfile string) {
   ch := make(chan EmailInformation)
   for _, file := range files {
     if !file.IsDir() && strings.HasSuffix(file.Name(), ".msg") {
-        numberParsedFiles++
-        wg.Add(1)
+        wgw.NumberParsedFiles++
+        wgw.Wg.Add(1)
         go emailParsing(dir + file.Name(), ch)
     } else if !file.IsDir() {
       log.Printf("Skipping %s. It isn't an email file\n", file.Name())
     }
   }
 
-  log.Printf("found %d email files in directory to parse\n", numberParsedFiles)
+  log.Printf("found %d email files in directory to parse\n", wgw.NumberParsedFiles)
 
-  go func(wg sync.WaitGroup, ch chan EmailInformation) {
-		wg.Wait()
+  go func(wgw WaitGroupWrapper, ch chan EmailInformation) {
+		wgw.Wg.Wait()
 		log.Println("done waiting")
 		close(ch)
-	}(wg, ch)
+	}(wgw, ch)
 
   // only write file if we parsed emails
-  if numberParsedFiles > 0 {
+  if wgw.NumberParsedFiles > 0 {
     writeFile(ch, outfile)
   }
 }
@@ -93,7 +103,7 @@ func writeFile(ch chan EmailInformation, outfile string) {
   defer f.Close()
 
   w := bufio.NewWriter(f)
-  for i := 0; i < numberParsedFiles; i++ {
+  for i := 0; i < wgw.NumberParsedFiles; i++ {
     emailinfo := <-ch
     _, err := w.WriteString(emailinfo.From + "|" + emailinfo.Subject + "|" + emailinfo.Date + "|" + emailinfo.FileName + "\n")
     checkError(err, "Issue writting to file")
@@ -104,7 +114,7 @@ func writeFile(ch chan EmailInformation, outfile string) {
 
 func emailParsing(myfile string, ch chan<-EmailInformation) {
   log.Printf("Opening %s\n", myfile)
-  defer wg.Done() // 3
+  defer wgw.Wg.Done() // 3
 
   file, err := os.Open(myfile)
   checkError(err, "Error opening file "+ myfile + "\n")
