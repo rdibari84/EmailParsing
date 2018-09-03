@@ -81,7 +81,10 @@ func readParseAndWriteFiles(dir string, outfile string) {
 		close(ch)
 	}(wg, ch)
 
-  writeFile(ch, outfile)
+  // only write file if we parsed emails
+  if numberParsedFiles > 0 {
+    writeFile(ch, outfile)
+  }
 }
 
 func writeFile(ch chan EmailInformation, outfile string) {
@@ -117,7 +120,7 @@ func parseFile(filename string, file io.Reader) EmailInformation {
   var from = ""
   var subject = ""
   var date = ""
-
+  var subjectIsDone = false
   // scan file
   scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -134,11 +137,13 @@ func parseFile(filename string, file io.Reader) EmailInformation {
 
     if subject == "" { // haven't found subject yet. keep looking
       subject = findRegex("^Subject:", line)
-    } else {
+    } else if !subjectIsDone { // we have a subject
       // if line starts with a space, then its a continuation from above
       matched, _ := regexp.MatchString("^ [\\S\\s]*", line)
       if matched {
         subject += line
+      } else { // if we have no more lines that start with a space, then the subject is done
+        subjectIsDone = true
       }
     }
 
