@@ -22,6 +22,15 @@ func TestExtractEmailUnwantedChar(t *testing.T){
   }
 }
 
+
+func TestExtractEmailMultiUnwantedChar(t *testing.T){
+  email := "=?utf-8?q?Aviva?= <aviva@avivaemail.co.uk>"
+  e := extractEmail(email)
+  if e != "aviva@avivaemail.co.uk" {
+    t.Errorf("Expected extractEmail to return 'aviva@avivaemail.co.uk' but got %s instead", e)
+  }
+}
+
 func TestExtractEmailName(t *testing.T){
   email := " \"AwaySomeTime\" <Amway@MagazineLine.com>"
   e := extractEmail(email)
@@ -54,11 +63,19 @@ func TestVaildEmailUnderscore(t *testing.T) {
   }
 }
 
+func TestVaildEmailNumbers(t *testing.T) {
+  email := "3114.352_22@45280.com"
+  e := extractEmail(email)
+  if e != "3114.352_22@45280.com" {
+    t.Errorf("Expected extractEmail to return '3114.352_22@45280.com' but got %s instead", e)
+  }
+}
+
 func TestBadEmail(t *testing.T) {
   email := "citicorp.com"
   e := extractEmail(email)
-  if e != "" {
-    t.Errorf("Expected extractEmail to return '' but got %s instead", e)
+  if e != "||" {
+    t.Errorf("Expected extractEmail to return '||' but got %s instead", e)
   }
 }
 
@@ -83,8 +100,8 @@ DomainKey-Signature: a=rsa-sha1; q=dns; c=nofws;
 Date: Fri, 1 Apr 2011 14:14:49 -0000
 Message-ID: <bx6rw3raupta74au6m0rxbysph09qe.0.15@mta141.avivaemail.co.uk>
 List-Unsubscribe: <mailto:rm-0bx6rw3raupta74au6m0rxbysph09qe@avivaemail.co.uk>
-From: =?utf-8?q?Aviva?= <aviva@avivaemail.co.uk>
-To: alchemyworx@@cp.assurance.returnpath.net
+From: =?utf-8?q?Aviva?= <aviva@@avivaemail.co.uk>
+To: alchemyworx@cp.assurance.returnpath.net
 Subject: (TEST-Multipart)
 MIME-Version: 1.0
 Reply-To: =?utf-8?q?Aviva?= <support-bx6rw3raupta74au6m0rxbysph09qe@avivaemail.co.uk>
@@ -95,7 +112,7 @@ func TestParseFileWithBadEmail(t *testing.T){
   r := bufio.NewReader(r1)
   emailInfo := parseFile("file.msg", r)
   if (emailInfo.From != "||") {
-    t.Errorf("Expected emailInfo.From to return 'From' but got %s instead", emailInfo.From)
+    t.Errorf("Expected emailInfo.From to return '||' but got %s instead", emailInfo.From)
   }
   if (emailInfo.Subject != "(TEST-Multipart)") {
     t.Errorf("Expected (TEST-Multipart). Got %s instead", emailInfo.Subject)
@@ -108,9 +125,7 @@ func TestParseFileWithBadEmail(t *testing.T){
   }
 }
 
-var mulitSubject = `
-
-Return-Path: <bo-bx6rw3raupta74au6m0rxbysph09qe@b.avivaemail.co.uk>
+var mulitSubject = `Return-Path: <bo-bx6rw3raupta74au6m0rxbysph09qe@b.avivaemail.co.uk>
 X-Original-To: alchemyworx@cp.assurance.returnpath.net
 Delivered-To: assurance@localhost.returnpath.net
 Received: from mxa-d1.returnpath.net (unknown [10.8.2.117])
@@ -126,7 +141,7 @@ DomainKey-Signature: a=rsa-sha1; q=dns; c=nofws;
 Date: Fri, 1 Apr 2011 14:14:49 -0000
 Message-ID: <bx6rw3raupta74au6m0rxbysph09qe.0.15@mta141.avivaemail.co.uk>
 List-Unsubscribe: <mailto:rm-0bx6rw3raupta74au6m0rxbysph09qe@avivaemail.co.uk>
-From: =?utf-8?q?Aviva?= <aviva@avivaemail.co.uk>
+From: "LA Galaxy" <enews@events.lagalaxy.com>
 To: alchemyworx@cp.assurance.returnpath.net
 Subject: (TEST-Multipart) =?utf-8?q?=5BRetention_In_Life_ezine=5Fhome=5F050411=5D_Introducing_Your_?=
  =?utf-8?q?Aviva_Essentials=3A_Win_4_tickets_to_the_Aviva_Premiership_Rugb?=
@@ -139,8 +154,8 @@ func TestParseFileWithMultiLineSubject(t *testing.T){
   r1 := strings.NewReader(mulitSubject)
   r := bufio.NewReader(r1)
   emailInfo := parseFile("file.msg", r)
-  if (emailInfo.From != "||") {
-    t.Errorf("Expected emailInfo.From to return 'From' but got %s instead", emailInfo.From)
+  if (emailInfo.From != "enews@events.lagalaxy.com") {
+    t.Errorf("Expected emailInfo.From to return 'enews@events.lagalaxy.com' but got %s instead", emailInfo.From)
   }
   if (emailInfo.Subject != `(TEST-Multipart) =?utf-8?q?=5BRetention_In_Life_ezine=5Fhome=5F050411=5D_Introducing_Your_?= =?utf-8?q?Aviva_Essentials=3A_Win_4_tickets_to_the_Aviva_Premiership_Rugb?= =?utf-8?q?y_Final=2C_Keep_the_cost_of_driving_down_and_more?=`) {
     t.Errorf("Expected %v. Got %v ", `(TEST-Multipart) =?utf-8?q?=5BRetention_In_Life_ezine=5Fhome=5F050411=5D_Introducing_Your_?=

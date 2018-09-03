@@ -117,59 +117,57 @@ func emailParsing(myfile string, ch chan<-EmailInformation) {
 
 func parseFile(filename string, file io.Reader) EmailInformation {
   // initialize variables
-  var from = ""
-  var subject = ""
-  var date = ""
+  var from = "||"
+  var subject = "||"
+  var date = "||"
   var subjectIsDone = false
   // scan file
   scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
     line := scanner.Text()
-    if from == "" { // haven't found from yet. keep looking
+
+    // haven't found from yet since its equal to its default value. keep looking
+    if from == "||" {
       tmp := findRegex("^From:", line)
-      if tmp != "" {
+      if tmp != "||" {
           from = extractEmail(tmp)
       }
     }
-    if date == "" { // haven't found date yet. keep looking
+
+    // haven't found date yet since its equal to its default value. keep looking
+    if date == "||" {
       date = findRegex("^Date:", line)
     }
 
-    if subject == "" { // haven't found subject yet. keep looking
+    // haven't found subject yet since its equal to its default value. keep looking
+    if subject == "||" {
       subject = findRegex("^Subject:", line)
-    } else if !subjectIsDone { // we have a subject
-      // if line starts with a space, then its a continuation from above
+    } else if !subjectIsDone { // we have a subject!
+      // if the next line starts with a space, then its a continuation of the subject
       matched, _ := regexp.MatchString("^ [\\S\\s]*", line)
       if matched {
-        subject += line
-      } else { // if we have no more lines that start with a space, then the subject is done
+        subject += line // append the line to the subject
+      } else { // The following line does not start with a space- then the subject is done
         subjectIsDone = true
       }
     }
 
-    if from != "" && date != "" && subject != "" { // if we have all the information, stop checking
+    // if we have all the information, stop checking
+    if from != "||" && date != "||" && subject != "||" && subjectIsDone {
       break;
     }
 	}
 	err := scanner.Err();
   checkError(err, "Issue scanning the file ")
 
-  // if we're missing any information set the feild to ||
-  if from == "" {
-    from = "||"
-  }
-  if subject == "" {
-    subject = "||"
-  }
-  if date == "" {
-    date = "||"
-  }
-
+  // make the object to return
   s := EmailInformation{from, subject, date, filename}
   log.Printf("{from: %s, subject: %s, date: %s, filename: %s }\n", s.From, s.Subject, s.Date, s.FileName)
   return s
 }
 
+// Checks if the pattern is contained in the string and returns the right most slice.
+// Returns || if pattern is contained in the string
 func findRegex(pattern string, s string) string {
   matched, err := regexp.MatchString(pattern, s)
   checkError(err, "Issue checking text for " + pattern)
@@ -178,12 +176,18 @@ func findRegex(pattern string, s string) string {
     toreturn := strings.TrimSpace(a.Split(s, -1)[1])
     return toreturn
   }
-  return ""
+  return "||"
 }
 
+// Checks if the string contains an email address.
+// ignores <>@?=utf-8 or anything else that might be in the from string
+// returns || if it can't extract an email
 func extractEmail(s string) string {
-  p := regexp.MustCompile("[^<>][\\w.]*@[\\S]*\\.[\\w]{3}")
+  p := 	regexp.MustCompile("[\\w-_.]+@[\\w_-]+?\\.[a-zA-Z-._]+")
   toreturn := strings.TrimSpace(p.FindString(s))
+  if toreturn == "" {
+    toreturn = "||"
+  }
   return toreturn
 }
 
