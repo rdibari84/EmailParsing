@@ -21,15 +21,26 @@ type EmailInformation struct {
   FileName string
 }
 
-// Make a wait group wrapper to count how many items are being processed
+// Make a wait group wrapper to count how many items are in the waitgroup at a specific point in time
 type WaitGroupWrapper struct {
   Wg sync.WaitGroup
   NumberParsedFiles int
 }
 
+func (wgw *WaitGroupWrapper) Add(delta int) {
+  wgw.Wg.Add(delta)
+  wgw.NumberParsedFiles += delta
+}
+
+func (wgw *WaitGroupWrapper) Done() {
+  wgw.Wg.Done()
+  wgw.NumberParsedFiles--
+  log.Printf("calling done. NumberParsedFiles %d", wgw.NumberParsedFiles)
+}
+
 func NewWaitGroupWrapper() WaitGroupWrapper {
-  wgw := WaitGroupWrapper{NumberParsedFiles: 0}
-  return wgw
+    wgw := WaitGroupWrapper{NumberParsedFiles: 0}
+    return wgw
 }
 
 var wgw = NewWaitGroupWrapper() // VERY IMP to declare this globally, other wise one would hit "fatal error: all goroutines are asleep - deadlock!"

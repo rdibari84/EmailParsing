@@ -7,6 +7,8 @@ import (
   "log"
   "path/filepath"
   "os"
+  "io"
+  "bytes"
 )
 
 ////////////////////////////////////
@@ -394,13 +396,13 @@ X-Ninja-Mailer-ID: 6752
 List-Unsubscribe: <http://www.boydgaming.com/unsubscribe?6752XXLUX0X0XTEST>
 Message-ID: <20110401173626.15575.2089030531.swift@webadmin.boydgaming.net>`
 
-func WriteTestFile() string{
+func WriteTestFile(name string) string{
   dir, err := filepath.Abs(filepath.Dir("."))
   if err != nil {
       log.Fatal(err)
   }
 
-  outfile := dir + "/test.msg"
+  outfile := dir + "/" + name
 
   // write file
   f, err := os.Create(outfile)
@@ -415,8 +417,34 @@ func WriteTestFile() string{
   return outfile
 }
 
+/*
+Use bytes.count because its faster than scanning.
+takes awaysextra logic and buffering required to return whole lines
+and takes advantage of some assembly optimized functions offered by the bytes package to search characters in a byte slice.
+32k buffer should be good for large files
+*/
+func lineCounter(r io.Reader) (int, error) {
+    buf := make([]byte, 32*1024)
+    count := 0
+    lineSep := []byte{'\n'}
+
+    for {
+        c, err := r.Read(buf)
+        count += bytes.Count(buf[:c], lineSep)
+
+        switch {
+        case err == io.EOF:
+            return count, nil
+
+        case err != nil:
+            return count, err
+        }
+    }
+}
+
+
 func TestEmailParsing(t *testing.T){
-  outfile := WriteTestFile()
+  outfile := WriteTestFile("test.msg")
 
   // Make channel
   ch := make(chan EmailInformation)
@@ -453,7 +481,9 @@ func TestEmailParsing(t *testing.T){
 }
 
 func TestReadParseAndWriteFiles(t *testing.T){
-  outfile := WriteTestFile()
+  outfile := WriteTestFile("test.msg")
+  outfile1 := WriteTestFile("test1.msg")
+  outfile2 := WriteTestFile("test2.msg")
 
   dir, err := filepath.Abs(filepath.Dir("."))
   if err != nil {
@@ -465,10 +495,19 @@ func TestReadParseAndWriteFiles(t *testing.T){
   // assert that a file was actually written
   file, err := os.Open(dir + "test.txt")
   if err != nil {
-      t.Errorf("Did not expect and error opening %s, but got one. error: %v", dir + "test.txt", err)
+      t.Errorf("Did not expect an error opening %s, but got one. error: %v", dir + "test.txt", err)
+  }
+  lineNum, err := lineCounter(file)
+  if err != nil {
+      t.Errorf("Did not expect an error reading the number of lines in %s but got one. error: %v", dir + "test.txt", err)
+  }
+  if lineNum != 3 {
+    t.Errorf("Expected three lines")
   }
   file.Close()
 
   os.Remove(outfile)
+  os.Remove(outfile1)
+  os.Remove(outfile2)
   os.Remove(dir + "test.txt")
 }
