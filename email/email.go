@@ -138,7 +138,7 @@ func parseFile(filename string, file io.Reader) EmailInformation {
       // if line starts with a space, then its a continuation from above
       matched, _ := regexp.MatchString("^ [\\S\\s]*", line)
       if matched {
-        subject = subject + "\n" + line
+        subject += line
       }
     }
 

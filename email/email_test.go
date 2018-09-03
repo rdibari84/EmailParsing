@@ -142,9 +142,7 @@ func TestParseFileWithMultiLineSubject(t *testing.T){
   if (emailInfo.From != "||") {
     t.Errorf("Expected emailInfo.From to return 'From' but got %s instead", emailInfo.From)
   }
-  if (emailInfo.Subject != `(TEST-Multipart) =?utf-8?q?=5BRetention_In_Life_ezine=5Fhome=5F050411=5D_Introducing_Your_?=
-   =?utf-8?q?Aviva_Essentials=3A_Win_4_tickets_to_the_Aviva_Premiership_Rugb?=
-   =?utf-8?q?y_Final=2C_Keep_the_cost_of_driving_down_and_more?=`) {
+  if (emailInfo.Subject != `(TEST-Multipart) =?utf-8?q?=5BRetention_In_Life_ezine=5Fhome=5F050411=5D_Introducing_Your_?= =?utf-8?q?Aviva_Essentials=3A_Win_4_tickets_to_the_Aviva_Premiership_Rugb?= =?utf-8?q?y_Final=2C_Keep_the_cost_of_driving_down_and_more?=`) {
     t.Errorf("Expected %v. Got %v ", `(TEST-Multipart) =?utf-8?q?=5BRetention_In_Life_ezine=5Fhome=5F050411=5D_Introducing_Your_?=
      =?utf-8?q?Aviva_Essentials=3A_Win_4_tickets_to_the_Aviva_Premiership_Rugb?=
      =?utf-8?q?y_Final=2C_Keep_the_cost_of_driving_down_and_more?=`, emailInfo.Subject)
@@ -346,20 +344,72 @@ func TestParseFileWithMissingAll(t *testing.T){
 }
 
 ////////////////////////////////////
-//////// EmailParsing Tests ////////
+//////// Integration Tests ////////
 ////////////////////////////////////
+var validMsg1 = `Return-Path: <suncoast@boydgaming.net>
+X-Original-To: boydgamingcorporation@cp.assurance.returnpath.net
+Delivered-To: assurance@localhost.returnpath.net
+Received: from mxa-d1.returnpath.net (unknown [10.8.2.117])
+	by cpa-d1.returnpath.net (Postfix) with ESMTP id 0937F198271
+	for <boydgamingcorporation@cp.assurance.returnpath.net>; Fri,  1 Apr 2011 11:36:27 -0600 (MDT)
+Received: from smtp2.boydgaming.net (smtp2.boydgaming.net [64.79.129.191])
+	by mxa-d1.returnpath.net (Postfix) with ESMTP id C120D126
+	for <boydgamingcorporation@cp.assurance.returnpath.net>; Fri,  1 Apr 2011 11:36:26 -0600 (MDT)
+Received: from [10.251.20.13] (unknown [10.251.20.13])
+	by smtp2.boydgaming.net (Postfix) with ESMTP id 3093227844F
+	for <boydgamingcorporation@cp.assurance.returnpath.net>; Fri,  1 Apr 2011 10:36:26 -0700 (PDT)
+X-DKIM: Sendmail DKIM Filter v2.8.3 smtp2.boydgaming.net 3093227844F
+DKIM-Signature: v=1; a=rsa-sha1; c=simple/simple; d=boydgaming.net; s=smtp;
+	t=1301679386; bh=DyM8CohSbjCN3K1AByz8K3FHMsA=;
+	h=To:From:Reply-To:Subject:Date:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:List-Unsubscribe:Message-ID;
+	b=XtHwSYl7M0uQt3U8XI/0f18VYVe/ta7nARZB1GN4TWbczqD8jIOf7cLIp93IX/Q27
+	 flggpcloqkcxlrCmJ4qWYstPrVGhpHfCdVJdTQMf9CmnTjjWfqsJ1mPL6QLOdcKxRB
+	 XmkjNNLtheRsBRLE1/e6wGHNutpri6zNCZzx7xgA=
+To: Lisa Marshall <boydgamingcorporation@cp.assurance.returnpath.net>
+From: Suncoast Hotel & Casino - Las Vegas <suncoast@boydgaming.net>
+Reply-To: Suncoast Hotel & Casino - Las Vegas <suncoast@boydgaming.net>
+Subject: See What's Happening with our Table Games!
+Date: Fri, 01 Apr 2011 10:36:26 -0700
+X-LibVersion: 3.3.2
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="_=_swift-13596511954d960d1a312b33.37345773_=_"
+Content-Transfer-Encoding: 7bit
+X-Ninja-Mailer-ID: 6752
+List-Unsubscribe: <http://www.boydgaming.com/unsubscribe?6752XXLUX0X0XTEST>
+Message-ID: <20110401173626.15575.2089030531.swift@webadmin.boydgaming.net>`
 
-func TestEmailParsing(t *testing.T){
+func WriteTestFile() string{
   dir, err := filepath.Abs(filepath.Dir("."))
   if err != nil {
       log.Fatal(err)
   }
 
+  outfile := dir + "/test.msg"
+
+  // write file
+  f, err := os.Create(outfile)
+  checkError(err, "Issue creating " + outfile)
+  defer f.Close()
+  w := bufio.NewWriter(f)
+
+  w.Write([]byte(validMsg1))
+  w.Flush()
+  log.Printf("Succesfully wrote %s", outfile)
+
+  return outfile
+}
+
+func TestEmailParsing(t *testing.T){
+  outfile := WriteTestFile()
+
+  // Make channel
   ch := make(chan EmailInformation)
-  files := []string{dir + "/test.msg",dir + "/test.msg",dir + "/test.msg",dir + "/test.msg",dir + "/test.msg",dir + "/test.msg"}
+  files := []string{outfile,outfile,outfile,outfile,outfile}
   for _, file := range files {
     wg.Add(1)
-    go emailParsing(file, ch)
+    go emailParsing(file, ch) // call test function
   }
 
   go func(wg sync.WaitGroup, ch chan EmailInformation) {
@@ -371,22 +421,26 @@ func TestEmailParsing(t *testing.T){
 
   for i := 0; i < len(files); i++ {
     s := <-ch
-    if (s.From != "infos@contact-darty.com") {
-      t.Errorf("Expected emailInfo.From to return 'infos@contact-darty.com' but got %s instead", s.From)
+    if (s.From != "suncoast@boydgaming.net") {
+      t.Errorf("Expected emailInfo.From to return 'suncoast@boydgaming.net' but got %s instead", s.From)
     }
-    if (s.Subject != "Hello World!") {
-      t.Errorf("Expected emailInfo.Subject to return 'Hello World!' but got %s instead", s.Subject)
+    if (s.Subject != "See What's Happening with our Table Games!") {
+      t.Errorf("Expected emailInfo.Subject to return 'See What's Happening with our Table Games!' but got %s instead", s.Subject)
     }
-    if (s.Date != "01 Apr 2011 16:17:41 +0200") {
-      t.Errorf("Expected emailInfo.Date to return 'Date' but got %s instead", s.Date)
+    if (s.Date != "Fri, 01 Apr 2011 10:36:26 -0700") {
+      t.Errorf("Expected emailInfo.Date to return 'Fri, 01 Apr 2011 10:36:26 -0700' but got %s instead", s.Date)
     }
     if (s.FileName != "test.msg") {
-      t.Errorf("Expected emailInfo.FileName to return 'file.msg' but got %s instead", s.FileName)
+      t.Errorf("Expected emailInfo.FileName to return 'test.msg' but got %s instead", s.FileName)
     }
   }
+
+  os.Remove(outfile)
 }
 
 func TestReadParseAndWriteFiles(t *testing.T){
+  outfile := WriteTestFile()
+
   dir, err := filepath.Abs(filepath.Dir("."))
   if err != nil {
       log.Fatal(err)
@@ -394,9 +448,13 @@ func TestReadParseAndWriteFiles(t *testing.T){
   dir = validateInput(dir, dir + "test.txt")
   readParseAndWriteFiles(dir, dir + "test.txt")
 
+  // assert that a file was actually written
   file, err := os.Open(dir + "test.txt")
   if err != nil {
       t.Errorf("Did not expect and error opening %s, but got one. error: %v", dir + "test.txt", err)
   }
   file.Close()
+
+  os.Remove(outfile)
+  os.Remove(dir + "test.txt")
 }
