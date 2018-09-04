@@ -450,7 +450,7 @@ func TestEmailParsing(t *testing.T){
   ch := make(chan EmailInformation)
   files := []string{outfile,outfile,outfile,outfile,outfile}
   for _, file := range files {
-    wgw.Wg.Add(1)
+    wgw.Add(1)
     go emailParsing(file, ch) // call test function
   }
 
