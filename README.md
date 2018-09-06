@@ -24,8 +24,6 @@ go run github.com/rdibari84/EmailParsing/email/email.go -dir=github.com/rdibari/
 ```
 
 ### Run Unit Tests
-- note unit tests use httptest to test api
-- also tests concurrent connections
 ```
 cd $GOPATH/src
 go test github.com/rdibari84/EmailParsing/email
