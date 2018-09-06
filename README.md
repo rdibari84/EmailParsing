@@ -20,7 +20,7 @@ go install github.com/rdibari84/EmailParsing/email
 - outfile points to the path and name of which to write the output. If not provided, it defaults to the current directory. It fails if the directory passed to it doesn't exist or if the requested file doesn't end in a .txt.
 ```
 cd $GOPATH/src
-go run github.com/rdibari84/EmailParsing/email/email.go -dir=github.com/{{github-user}}/EmailParsing/data/ -outfile=github.com/rdibari84/EmailParsing/emails.txt
+go run github.com/rdibari84/EmailParsing/email/email.go -dir=github.com/rdibari/EmailParsing/data/ -outfile=github.com/rdibari84/EmailParsing/emails.txt
 ```
 
 ### Run Unit Tests
