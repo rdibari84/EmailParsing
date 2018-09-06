@@ -4,8 +4,8 @@
 ### Setup
 ```
 echo $GOPATH # should be set to $HOME/go
-mkdir -p $GOPATH/src/github.com/{{github-user}}
-cd $GOPATH/src/github.com/{{github-user}}
+mkdir -p $GOPATH/src/github.com/rdibari84
+cd $GOPATH/src/github.com/rdibari84
 git clone https://github.com/rdibari84/EmailParsing.git
 ```
 
@@ -20,7 +20,7 @@ go install github.com/rdibari84/EmailParsing/email
 - outfile points to the path and name of which to write the output. If not provided, it defaults to the current directory. It fails if the directory passed to it doesn't exist or if the requested file doesn't end in a .txt.
 ```
 cd $GOPATH/src
-go run github.com/{{github-user}}/EmailParsing/email/email.go -dir=github.com/{{github-user}}/EmailParsing/data/ -outfile=github.com/{{github-user}}/EmailParsing/emails.txt
+go run github.com/rdibari84/EmailParsing/email/email.go -dir=github.com/{{github-user}}/EmailParsing/data/ -outfile=github.com/rdibari84/EmailParsing/emails.txt
 ```
 
 ### Run Unit Tests
@@ -28,5 +28,5 @@ go run github.com/{{github-user}}/EmailParsing/email/email.go -dir=github.com/{{
 - also tests concurrent connections
 ```
 cd $GOPATH/src
-go test github.com/{{github-user}}/EmailParsing/email
+go test github.com/rdibari84/EmailParsing/email
 ```
