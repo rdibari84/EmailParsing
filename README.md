@@ -33,5 +33,5 @@ go run github.com/rdibari84/EmailParsing/email/email.go -dir=github.com/rdibari/
 ### Run Unit Tests
 ```
 cd $GOPATH/src
-go test github.com/rdibari84/EmailParsing/email
+go test --cover github.com/rdibari84/EmailParsing/email
 ```
