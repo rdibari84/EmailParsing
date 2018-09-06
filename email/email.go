@@ -107,7 +107,7 @@ func readParseAndWriteFiles(dir string, outfile string) {
     }
   }
 
-  /* capture the total number of files being parsed.
+  /* capture the total number of email files being parsed.
   wgw.NumberInWaitGroup will decrement as the goroutines finish */
   totalNumberEmails := wgw.NumberInWaitGroup
   log.Printf("found %d email files in directory to parse\n", totalNumberEmails)
@@ -125,10 +125,13 @@ func readParseAndWriteFiles(dir string, outfile string) {
   }
 }
 
+/*
+Writes a txt file, | deliminated with the email information
+*/
 func writeFile(ch chan EmailInformation, outfile string, totalNumberEmails int) {
   f, err := os.Create(outfile)
   checkError(err, "Issue creating " + outfile)
-  defer f.Close()
+  defer f.Close() // close file at the end of the function
 
   w := bufio.NewWriter(f)
   for i := 0; i < totalNumberEmails; i++ {
@@ -140,19 +143,30 @@ func writeFile(ch chan EmailInformation, outfile string, totalNumberEmails int) 
   log.Printf("Succesfully wrote %s", outfile)
 }
 
+/*
+The GoRoutine
+Opens the email, calls parse with the file the io.Reader
+Rturns the channel with EmailInformation
+*/
 func emailParsing(myfile string, ch chan<-EmailInformation) {
   log.Printf("Opening %s\n", myfile)
-  defer wgw.Done() // 3
+  defer wgw.Done() // call WaitGroup Done at the end of the function
 
   file, err := os.Open(myfile)
   checkError(err, "Error opening file "+ myfile + "\n")
-  defer file.Close()
+  defer file.Close() // close file at the end of the function
   filename := filepath.Base(myfile)
   info := parseFile(filename, file)
 
   ch <- info
 }
 
+/*
+Scans the file line by line looking for Subject, Date and From
+Breaks when it finds all information, otherwise keeps searching until there are no more lines to scan
+Defaults to || for a missing field
+Returns EmailInformation
+*/
 func parseFile(filename string, file io.Reader) EmailInformation {
   // initialize variables
   var from = "||"
@@ -162,23 +176,23 @@ func parseFile(filename string, file io.Reader) EmailInformation {
 
   // scan file
   scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
+  for scanner.Scan() {
     line := scanner.Text()
 
-    // haven't found from yet since its equal to its default value. keep looking
+    // haven't found from yet since its equal to its default value. check if this is the line
     if from == "||" {
-      tmp := findRegex("^From:", line)
-      if tmp != "||" {
+      tmp := findRegex("^From:", line) 
+      if tmp != "||" { // if we have a line with From: check if an email can be fished out of it
           from = extractEmail(tmp)
       }
     }
 
-    // haven't found date yet since its equal to its default value. keep looking
+    // haven't found date yet since its equal to its default value. check if this is the line
     if date == "||" {
       date = findRegex("^Date:", line)
     }
 
-    // haven't found subject yet since its equal to its default value. keep looking
+    // haven't found subject yet since its equal to its default value. check if this is the line
     if subject == "||" {
       subject = findRegex("^Subject:", line)
     } else if !subjectIsDone { // we have a subject!
@@ -195,8 +209,8 @@ func parseFile(filename string, file io.Reader) EmailInformation {
     if from != "||" && date != "||" && subject != "||" && subjectIsDone {
       break;
     }
-	}
-	err := scanner.Err();
+  }
+  err := scanner.Err();
   checkError(err, "Issue scanning the file ")
 
   // make the object to return
@@ -206,7 +220,7 @@ func parseFile(filename string, file io.Reader) EmailInformation {
 }
 
 /* Checks if the pattern is contained in the string and returns the right most slice.
-Returns || if pattern is contained in the string */
+Returns || if pattern is not contained in the string */
 func findRegex(pattern string, s string) string {
   matched, err := regexp.MatchString(pattern, s)
   checkError(err, "Issue checking text for " + pattern)
@@ -249,8 +263,9 @@ func main() {
   flag.StringVar(&outfile, "outfile", currentdir + "/email.txt", "full directory path that holds the email files to parse")
   flag.Parse()
 
-
+  // Make sure input it good. Also sets a trailing / on the directory if its not present
   dir = validateInput(dir, outfile)
+  
   // parse files
   readParseAndWriteFiles(dir, outfile)
 }
